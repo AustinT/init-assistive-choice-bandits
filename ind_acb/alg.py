@@ -2,6 +2,8 @@
 import math
 import random
 from abc import ABC, abstractmethod
+from collections import Counter
+from typing import Optional
 
 import numpy as np
 
@@ -40,7 +42,7 @@ class RUCB(BaseAlgPolicy):
 
         # Create U matrix
         W_plus_W_T = self.W + self.W.T
-        with np.errstate(invalid="ignore"):
+        with np.errstate(invalid="ignore", divide="ignore"):
             U = self.W / W_plus_W_T + np.sqrt(self.alpha * math.log(time) / W_plus_W_T)
         assert not np.any(np.isinf(U))  # just NaNs
         U = np.nan_to_num(U, nan=1.0)
@@ -88,3 +90,23 @@ class RUCB(BaseAlgPolicy):
         if not_chosen_action == chosen_action:
             not_chosen_action = available_actions[1]
         self.W[chosen_action, not_chosen_action] += 1
+
+    def predict_winner(self, action_set: list[int]) -> Optional[int]:
+        assert sorted(action_set) == list(range(len(action_set)))
+        assert len(action_set) == len(self.W)
+
+        # Arm with highest predicted win rate
+        # print(policy.W)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            pred_win_rates = self.W / (self.W + self.W.T)
+        pred_win_rates = np.nan_to_num(pred_win_rates, nan=0.5)
+        # print(pred_win_rates)
+        num_arms_beaten = (pred_win_rates > 0.5).astype(int).sum(axis=-1)
+
+        # Handle tie breaking (return "None" if there is a tie)
+        max_beaten = np.max(num_arms_beaten)
+        counter = Counter(num_arms_beaten.tolist())
+        if counter[max_beaten] > 1:
+            return None
+        else:
+            return np.argmax(num_arms_beaten)
