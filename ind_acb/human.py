@@ -3,6 +3,9 @@ import math
 from abc import ABC, abstractmethod
 
 import numpy as np
+from scipy import stats
+
+from ind_acb.misc import beta_dist_max_prob
 
 
 class BaseHumanPolicy(ABC):
@@ -64,3 +67,30 @@ class HumanUCB(BaseHumanPolicy, ExactProbHumanMixin):
             return 1.0
         else:
             return 0.0
+
+
+class HumanThompsonSampling(BaseHumanPolicy, ExactProbHumanMixin):
+    def __init__(self, alpha0: np.ndarray, beta0: np.ndarray):
+        self.alpha0 = np.asarray(alpha0)
+        self.beta0 = np.asarray(beta0)
+        super().__init__()
+
+    def reset(self):
+        self.alpha = self.alpha0.copy()
+        self.beta = self.beta0.copy()
+
+    def choose_action(self, time: int, available_actions: list[int]) -> int:
+        sample = stats.beta(self.alpha, self.beta).rvs()
+        return max(available_actions, key=lambda a: sample[a])
+
+    def record_reward(self, time: int, action: int, reward: float) -> None:
+        if reward == 1.0:
+            self.alpha[action] += 1
+        elif reward == 0.0:
+            self.beta[action] += 1
+        else:
+            raise ValueError(reward)
+
+    def action_choice_prob(self, time: int, a1: int, a2: int) -> float:
+        # Note: "0" below is because a1 is in index 0
+        return beta_dist_max_prob(self.alpha[[a1, a2]], self.beta[[a1, a2]], 0)

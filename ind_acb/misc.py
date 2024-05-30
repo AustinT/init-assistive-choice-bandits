@@ -3,7 +3,7 @@ import scipy.stats as stats
 from scipy.integrate import quad
 
 
-def beta_dist_max_prob(alpha, beta, i):
+def beta_dist_max_prob(alpha, beta, i) -> float:
     """
     Given a list of alpha and beta parameters for a set of beta distributions,
     and an index i, return the probability that a sample from the i-th distribution

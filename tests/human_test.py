@@ -2,6 +2,7 @@ import math
 from collections import Counter
 
 from ind_acb import human
+from ind_acb.misc import beta_dist_max_prob
 
 
 def _exact_prob_matches(policy, time: int, a1: int, a2: int, N: int = 10_000):
@@ -26,7 +27,7 @@ class BaseHumanTest:
 class TestHumanUCB(BaseHumanTest):
     def _make_policy(self) -> human.HumanUCB:
         policy = human.HumanUCB()
-        # Record 2 different rewards
+        # Record 3 different rewards
         policy.record_reward(1, 0, 1.0)
         policy.record_reward(2, 1, 0.0)
         policy.record_reward(3, 0, 0.0)
@@ -53,3 +54,37 @@ class TestHumanUCB(BaseHumanTest):
         assert policy.choose_action(4, [0, 1]) == 0
         assert policy.choose_action(4, [0, 1, 2]) == 2
         assert policy.choose_action(4, [1, 2]) == 2
+
+
+class TestHumanThompsonSampling(BaseHumanTest):
+    def _make_policy(self) -> human.HumanThompsonSampling:
+        policy = human.HumanThompsonSampling([1, 2, 3], [4, 5, 6])
+
+        # Record 3 different rewards
+        policy.record_reward(1, 0, 1.0)
+        policy.record_reward(2, 1, 0.0)
+        policy.record_reward(3, 0, 0.0)
+
+        # After this, posterior should be
+        # alpha = [2, 2, 3]
+        # beta = [5, 6, 6]
+        return policy
+
+    def test_exact_prob(self):
+        policy = self._make_policy()
+        _exact_prob_matches(policy, time=4, a1=0, a2=1)
+        _exact_prob_matches(policy, time=4, a1=0, a2=2)
+        _exact_prob_matches(policy, time=4, a1=1, a2=2)
+
+    def test_choose_action(self):
+        policy = self._make_policy()
+
+        # Choose many random actions
+        actions = [policy.choose_action(4, [0, 1, 2]) for _ in range(10000)]
+
+        # Check that the distribution of actions matches the expected distribution
+        action_counts = Counter(actions)
+        for i, count in action_counts.items():
+            observed_freq = count / len(actions)
+            expected_freq = beta_dist_max_prob([2, 2, 3], [5, 6, 6], i)
+            assert math.isclose(observed_freq, expected_freq, abs_tol=0.05)
