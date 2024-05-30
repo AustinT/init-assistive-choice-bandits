@@ -35,10 +35,10 @@ class RUCB(BaseAlgPolicy):
         self.alpha = 1.0
         self.B = set()
 
-    def choose_action_set(self, time: int, all_actions: list[int]):
-        # Init W
-        if self.W is None:
-            self.W = np.zeros((len(all_actions), len(all_actions)), dtype=int)
+    def _get_U_and_C(self, time: int, all_actions: list[int]):
+        """
+        Run lines 4-6 of the algorithm, computing the U and C matrix.
+        """
 
         # Create U matrix
         W_plus_W_T = self.W + self.W.T
@@ -54,6 +54,32 @@ class RUCB(BaseAlgPolicy):
         for i, _ in enumerate(all_actions):
             if np.all(U[i] >= 0.5):
                 C.add(i)  # append action idxs
+
+        return U, C
+
+    def will_definitely_self_duel(self, time: int, all_actions: list[int]) -> bool:
+        """True if the policy will definitely self-duel at the current time step."""
+        U, C = self._get_U_and_C(time, all_actions)
+
+        # Compute possible values for a_c
+        if len(C) == 0:
+            C.update(all_actions)
+
+        # If c is the unique maximizer of max_j(U_cj) for ALL c in C,
+        # then the policy will definitely self-duel.
+        for c in C:
+            u_cc = U[c, c]
+            if any(u_cc <= U[c, j] for j in C if j != c):
+                return False
+        return True
+
+    def choose_action_set(self, time: int, all_actions: list[int]):
+        # Init W
+        if self.W is None:
+            self.W = np.zeros((len(all_actions), len(all_actions)), dtype=int)
+
+        # Find U and C, filling C if it is empty
+        U, C = self._get_U_and_C(time, all_actions)
         if len(C) == 0:
             C = {int(self.rng.choice(all_actions))}
 
