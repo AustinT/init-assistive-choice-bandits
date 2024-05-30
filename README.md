@@ -1,29 +1,8 @@
-# Python Template
+# Initial assistive choice bandit experiments
 
-**Project description here**
-
-This is a template project so I don't need to keep setting up pre-commit.
+Some rough code for initial assistive choice bandit experiments.
 
 ## Development
 
-### Installation
-
-**Installation instructions here**
-
-### Formatting
-
-Use pre-commit to enforce formatting, large file checks, etc.
-
-If not already installed in your environment, run:
-
-```bash
-conda install pre-commit
-```
-
-To install the precommit hooks:
-
-```bash
-pre-commit install
-```
-
-Now a series of useful checks will be run before any commit.
+- run `pre-commit install` to set up pre-commit hooks
+- Remember to run `pytest`
